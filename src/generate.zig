@@ -923,7 +923,7 @@ fn writeFieldName(writer: anytype, name: []const u8) !void {
             },
             'a'...'z' => try writer.writeByte(c),
             'A'...'Z' => {
-                if (i > 0) switch (name[i - 1]) {
+                if (i > 0 and i < name.len - 1) switch (name[i + 1]) {
                     'A'...'Z', '_' => {},
                     else => try writer.writeByte('_'),
                 };
