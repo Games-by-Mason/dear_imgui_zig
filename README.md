@@ -45,6 +45,8 @@ python3 dear_bindings.py --backend --imconfig-path ~/Documents/imgui/imconfig.h 
 
 If `generator.zig` fails, you may need to add missing values to the enumeration. `std.json` does not provide helpful errors at the time of writing, the easiest way to debug this is to comment out the actual generation code, and all fields in `Header`, adding them back until you figure out which are causing the issue.
 
+You can also debug the generator with the `generate` command.
+
 ## Known differences
 * doesn't build `binary_to_compressed_c`
 * doesn't build `misc/cpp/imgui_stdlib.cpp`
