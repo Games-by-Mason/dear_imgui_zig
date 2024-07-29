@@ -918,9 +918,6 @@ fn writeFieldName(writer: anytype, name: []const u8) !void {
                 if (i == 0) {
                     escape = true;
                     try writer.writeAll("@\"");
-                } else switch (name[i - 1]) {
-                    '0'...'9' => {},
-                    else => try writer.writeByte('_'),
                 }
                 try writer.writeByte(c);
             },
