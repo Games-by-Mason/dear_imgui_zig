@@ -1,7 +1,13 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const Declarations = std.StringArrayHashMap(struct { is_opaque: bool });
+const DeclarationKind = enum {
+    normal,
+    @"opaque",
+    import, // Assumed to be normal, but external
+};
+
+const Declarations = std.StringArrayHashMap(DeclarationKind);
 const max_size = 5000000;
 
 // The header type we'll parse from JSON. Fields are only included as needed.
@@ -242,26 +248,37 @@ fn getDeclarations(allocator: Allocator, header: *const Header) !Declarations {
     for (header.structs) |ty| {
         if (skip(ty.conditionals)) continue;
 
-        // Check if we're a forward decl, or a packed struct.
-        //
-        // We *could* write out the Zig code to pack them by passing the widths in when writing
-        // the type (and overwriting number types with the actual width, asserting otherwise.)
-        //
-        // However, we'd need to decide the correct backing type for the packed struct to make
-        // it compatible with C. I'm also not 100% what the guarantees are for packed struct
-        // layout in C.
-        var is_opaque = false;
+        var kind: DeclarationKind = .normal;
         if (ty.forward_declaration) {
-            is_opaque = true;
+            if (std.mem.eql(u8, "ImDrawData", ty.name)) {
+                // Normally if a type has the forward declaration flag set, we want to mark it as
+                // opaque. In the case of draw data, however, the ImGui backends opt to forward
+                // declare it instead of include it. If we were to mark it as opaque here, it would
+                // be opaque in the backends but an actual type in imgui.
+                //
+                // Instead, Zig ports of the backends should import DrawData.
+                kind = .import;
+            } else {
+                kind = .@"opaque";
+            }
         } else if (ty.kind == .@"struct") {
             for (ty.fields) |field| if (field.width != null) {
-                is_opaque = true;
+                // Treat packed structs as opaque.
+                // 
+                // We *could* write out the Zig code to pack them by passing the widths in when
+                // writing the type (and overwriting number types with the actual width, asserting
+                // otherwise.)
+                //
+                // However, we'd need to decide the correct backing type for the packed struct to
+                // make it compatible with C. I'm also not 100% what the guarantees are for packed
+                // struct layout in C.
+                kind = .@"opaque";
                 break;
             };
         }
 
         const trimmed = std.mem.trimRight(u8, ty.name, "_");
-        try declarations.put(trimmed, .{ .is_opaque = is_opaque });
+        try declarations.put(trimmed, kind);
     }
 
     for (header.enums) |e| {
@@ -269,7 +286,7 @@ fn getDeclarations(allocator: Allocator, header: *const Header) !Declarations {
         if (skip(e.conditionals)) continue;
 
         const trimmed = std.mem.trimRight(u8, e.name, "_");
-        try declarations.put(trimmed, .{ .is_opaque = false });
+        try declarations.put(trimmed, .normal);
     }
 
     return declarations;
@@ -512,13 +529,17 @@ fn writeStructs(
         // JSON?)
         if (skip(ty.conditionals)) continue;
 
+        // Skip imported decls
+        const decl_kind = declarations.get(ty.name).?;
+        if (decl_kind == .import) continue;
+
         // Write the struct
         try writer.writeAll("pub const ");
         try writeTypeName(writer, ty.name);
         try writer.writeAll(" = ");
 
         // If we're opaque, don't try to fill out the struct fields
-        if (declarations.get(ty.name).?.is_opaque) {
+        if (decl_kind == .@"opaque") {
             try writer.writeAll("opaque {};\n");
             continue;
         }
@@ -730,8 +751,8 @@ fn writePointerType(
     // Check if we're a pointer to an opaque type
     var is_opaque = false;
     if (ty.description.inner_type.?.name) |name| {
-        if (declarations.get(name)) |decl| {
-            is_opaque = decl.is_opaque;
+        if (declarations.get(name)) |kind| {
+            is_opaque = kind == .@"opaque";
         }
     }
 

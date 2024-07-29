@@ -1,3 +1,5 @@
+const DrawData = @import("dear_imgui").DrawData;
+
 const Options = struct {
     PFNvkVoidFunction: type,
     VkAllocationCallbacks: type,

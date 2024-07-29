@@ -106,4 +106,5 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     dear_imgui_vulkan_zig_module.linkLibrary(dear_imgui_vulkan_lib);
+    dear_imgui_vulkan_zig_module.addImport("dear_imgui", dear_imgui_zig_module);
 }
