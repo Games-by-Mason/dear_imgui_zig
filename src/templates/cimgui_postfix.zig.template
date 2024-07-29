@@ -1,0 +1,8 @@
+// It's unclear to me where the generator gets this define (maybe it's directly from the original
+// cpp header?), so we generate it manually.
+pub fn col32(r: u32, g: u32, b: u32, a: u32) u32 {
+    return a << IM_COL32_A_SHIFT |
+        b << IM_COL32_B_SHIFT |
+        g << IM_COL32_G_SHIFT |
+        r << IM_COL32_R_SHIFT;
+}

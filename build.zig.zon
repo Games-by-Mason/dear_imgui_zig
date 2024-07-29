@@ -1,0 +1,22 @@
+.{
+    .name = "dear_imgui_zig",
+    .version = "0.0.0",
+    .dependencies = .{
+        .@"dear-imgui" = .{
+            .url = "https://github.com/ocornut/imgui/archive/refs/tags/v1.90.9-docking.tar.gz",
+            .hash = "1220854ebf6bca15874cac634f0c9e39145cc0d13c1cf74822b6ed3073e906a4f8d5",
+        },
+        .@"Vulkan-Headers" = .{
+            .url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.3.290.tar.gz",
+            .hash = "12200beeb3d546548d62a5ad1ac4153e28f78bdeb3617a07aa7a8e584b51cba2daa1",
+        },
+    },
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "LICENSE",
+        "README.md",
+    },
+}

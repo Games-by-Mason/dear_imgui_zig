@@ -1,0 +1,68 @@
+const Options = struct {
+    PFNvkVoidFunction: type,
+    VkAllocationCallbacks: type,
+    VkClearValue: type,
+    VkColorSpaceKHR: type,
+    VkCommandBuffer: type,
+    VkCommandPool: type,
+    VkDescriptorPool: type,
+    VkDescriptorSet: type,
+    VkDevice: type,
+    VkDeviceSize: type,
+    VkFence: type,
+    VkFramebuffer: type,
+    VkImage: type,
+    VkImageLayout: type,
+    VkImageView: type,
+    VkInstance: type,
+    VkPhysicalDevice: type,
+    VkPipeline: type,
+    VkPipelineCache: type,
+    VkPipelineRenderingCreateInfoKHR: type,
+    VkPresentModeKHR: type,
+    VkQueue: type,
+    VkRenderPass: type,
+    VkResult: type,
+    VkSampleCountFlagBits: type,
+    VkSampler: type,
+    VkSemaphore: type,
+    VkSurfaceFormatKHR: type,
+    VkSurfaceKHR: type,
+    VkSwapchainKHR: type,
+    VkFormat: type,
+};
+
+pub fn get(options: Options) type {
+    const VkFormat = options.VkFormat;
+    const PFNvkVoidFunction = options.PFNvkVoidFunction;
+    const VkAllocationCallbacks = options.VkAllocationCallbacks;
+    const VkClearValue = options.VkClearValue;
+    const VkColorSpaceKHR = options.VkColorSpaceKHR;
+    const VkCommandBuffer = options.VkCommandBuffer;
+    const VkCommandPool = options.VkCommandPool;
+    const VkDescriptorPool = options.VkDescriptorPool;
+    const VkDescriptorSet = options.VkDescriptorSet;
+    const VkDevice = options.VkDevice;
+    const VkDeviceSize = options.VkDeviceSize;
+    const VkFence = options.VkFence;
+    const VkFramebuffer = options.VkFramebuffer;
+    const VkImage = options.VkImage;
+    const VkImageLayout = options.VkImageLayout;
+    const VkImageView = options.VkImageView;
+    const VkInstance = options.VkInstance;
+    const VkPhysicalDevice = options.VkPhysicalDevice;
+    const VkPipeline = options.VkInstance;
+    const VkPipelineCache = options.VkPipelineCache;
+    const VkPipelineRenderingCreateInfoKHR = options.VkPipelineRenderingCreateInfoKHR;
+    const VkPresentModeKHR = options.VkPresentModeKHR;
+    const VkQueue = options.VkQueue;
+    const VkRenderPass = options.VkRenderPass;
+    const VkResult = options.VkResult;
+    const VkSampleCountFlagBits = options.VkSampleCountFlagBits;
+    const VkSampler = options.VkSampler;
+    const VkSemaphore = options.VkSemaphore;
+    const VkSurfaceFormatKHR = options.VkSurfaceFormatKHR;
+    const VkSurfaceKHR = options.VkSurfaceKHR;
+    const VkSwapchainKHR = options.VkSwapchainKHR;
+
+    return struct {
