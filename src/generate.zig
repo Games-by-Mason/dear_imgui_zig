@@ -114,6 +114,7 @@ const Header = struct {
             @"defined(VK_USE_PLATFORM_WIN32_KHR)&&!defined(NOMINMAX)",
             @"defined(VK_VERSION_1_3)|| defined(VK_KHR_dynamic_rendering)",
             IMGUI_IMPL_VULKAN_HAS_DYNAMIC_RENDERING,
+            IMGUI_DISABLE_DEBUG_TOOLS,
         },
     };
 
@@ -851,6 +852,7 @@ fn skip(conditionals: []const Header.Conditional) bool {
             .@"defined(IMGUI_DISABLE_METRICS_WINDOW)&&!defined(IMGUI_DISABLE_OBSOLETE_FUNCTIONS)&&!defined(IMGUI_DISABLE_DEBUG_TOOLS)",
             .@"defined(IMGUI_HAS_IMSTR)",
             .IMGUI_HAS_IMSTR,
+            .IMGUI_DISABLE_DEBUG_TOOLS,
             => false,
         };
         switch (conditional.condition) {

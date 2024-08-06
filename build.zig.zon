@@ -3,8 +3,8 @@
     .version = "0.0.0",
     .dependencies = .{
         .@"dear-imgui" = .{
-            .url = "https://github.com/ocornut/imgui/archive/refs/tags/v1.90.9-docking.tar.gz",
-            .hash = "1220854ebf6bca15874cac634f0c9e39145cc0d13c1cf74822b6ed3073e906a4f8d5",
+            .url = "https://github.com/ocornut/imgui/archive/refs/tags/v1.91.0-docking.tar.gz",
+            .hash = "12202e9be2f239ed76eee410708478443039fa503011709763f3fa6bf5869595130b",
         },
         .@"Vulkan-Headers" = .{
             .url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.3.290.tar.gz",

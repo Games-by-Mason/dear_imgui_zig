@@ -984,7 +984,7 @@
             "is_unformatted_helper": false,
             "comments": {
                 "preceding": [
-                    "// Called by user code"
+                    "// Follow \"Getting Started\" link and check examples/ folder to learn about using backends!"
                 ]
             },
             "is_internal": false,
