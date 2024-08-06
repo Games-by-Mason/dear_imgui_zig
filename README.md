@@ -37,10 +37,15 @@ At build time, `generate.zig` is called on the relevant JSON files to generate a
 
 Update `build.zig.zon`, and then if the headers changed, regenerate them into `src/cached` with [dear_bindings](https://github.com/dearimgui/dear_bindings).
 
-Building `cimgui.h` is explained in their README, here'd how to build a backend. You can also see the command format in their `bindings.bat` file.
+Here's how to build `cimgui.h`:
+```sh
+python3 $DEAR_BINDINGS_PATH/dear_bindings.py -o src/cached/cimgui $DEAR_IMGUI_PATH/imgui.h
+```
+
+Here's how to build a backend, using Vulkan as an example:
 
 ```sh
-python3 dear_bindings.py --backend --imconfig-path ~/Documents/imgui/imconfig.h -o cimgui_internal ~/Documents/imgui/imgui_internal.h
+python3 $DEAR_BINDINGS_PATH/dear_bindings.py --backend --imconfig-path $DEAR_IMGUI_PATH/imconfig.h -o src/cached/cimgui_impl_vulkan $DEAR_IMGUI_PATH/backends/imgui_impl_vulkan.h
 ```
 
 If `generator.zig` fails, you may need to add missing values to the enumeration. `std.json` does not provide helpful errors at the time of writing, the easiest way to debug this is to comment out the actual generation code, and all fields in `Header`, adding them back until you figure out which are causing the issue.
