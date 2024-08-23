@@ -170,6 +170,7 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     var args = try std.process.argsWithAllocator(allocator);
+    defer args.deinit();
     std.debug.assert(args.skip());
     const in_path = args.next().?;
     const out_path = args.next().?;
