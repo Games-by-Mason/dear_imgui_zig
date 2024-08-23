@@ -10,6 +10,7 @@ pub fn build(b: *std.Build) void {
     // Standard options
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const native_target = b.resolveTargetQuery(.{});
 
     const optimize_external = switch (optimize) {
         .Debug => .ReleaseSafe,
@@ -68,7 +69,7 @@ pub fn build(b: *std.Build) void {
     const generate_exe = b.addExecutable(.{
         .name = "generate",
         .root_source_file = b.path("src/generate.zig"),
-        .target = target,
+        .target = native_target,
         .optimize = optimize,
     });
 
