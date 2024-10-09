@@ -1,6 +1,7 @@
 .{
     .name = "dear_imgui_zig",
     .version = "0.0.0",
+    .minimum_zig_version = "0.14.0-dev.1820+ea527f7a8",
     .dependencies = .{
         .@"dear-imgui" = .{
             .url = "https://github.com/ocornut/imgui/archive/refs/tags/v1.91.0-docking.tar.gz",

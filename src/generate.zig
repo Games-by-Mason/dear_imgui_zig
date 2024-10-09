@@ -266,7 +266,7 @@ fn getDeclarations(allocator: Allocator, header: *const Header) !Declarations {
         } else if (ty.kind == .@"struct") {
             for (ty.fields) |field| if (field.width != null) {
                 // Treat packed structs as opaque.
-                // 
+                //
                 // We *could* write out the Zig code to pack them by passing the widths in when
                 // writing the type (and overwriting number types with the actual width, asserting
                 // otherwise.)
@@ -432,8 +432,8 @@ fn writeEnums(allocator: Allocator, writer: anytype, header: *const Header) !voi
 
 fn writeFlagsEnum(writer: anytype, e: Header.Enum) !void {
     const backing, const backing_bits = switch (e.storage_type.declaration) {
-        .int => .{"c_int", @typeInfo(c_int).Int.bits},
-        .ImU8 => .{"u8", 8},
+        .int => .{ "c_int", @typeInfo(c_int).int.bits },
+        .ImU8 => .{ "u8", 8 },
     };
     try writer.print("packed struct({s}) {{\n", .{backing});
     var current_offset: usize = 0;
@@ -577,7 +577,7 @@ fn writeStructs(
         const method_names = methods.types.getPtr(ty.name).?;
         for (method_names.items) |name| {
             try writer.writeAll("    pub const ");
-            try writeFunctionName(writer, name[ty.name.len + 1..]);
+            try writeFunctionName(writer, name[ty.name.len + 1 ..]);
             try writer.print(" = {s};\n", .{name});
         }
 
@@ -588,7 +588,7 @@ fn writeStructs(
 fn writeHelpers(writer: anytype) !void {
     try writer.writeAll(
         \\fn toUsize(v: anytype) usize {
-        \\    if (@typeInfo(@TypeOf(v)) == .Enum) return @intFromEnum(v);
+        \\    if (@typeInfo(@TypeOf(v)) == .@"enum") return @intFromEnum(v);
         \\    return @intCast(v);
         \\}
         \\
