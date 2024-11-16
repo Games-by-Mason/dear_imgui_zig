@@ -8,8 +8,8 @@
             .hash = "12202e9be2f239ed76eee410708478443039fa503011709763f3fa6bf5869595130b",
         },
         .@"Vulkan-Headers" = .{
-            .url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.3.290.tar.gz",
-            .hash = "12200beeb3d546548d62a5ad1ac4153e28f78bdeb3617a07aa7a8e584b51cba2daa1",
+            .url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.3.292.tar.gz",
+            .hash = "1220dba588188c5dfba1b294785b0ed360ad1ea2e69bf7c076169cffdeec2fa2c0b4",
         },
     },
 

@@ -27,7 +27,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize_external,
     });
     dear_imgui_lib.addIncludePath(upstream.path(""));
-    dear_imgui_lib.installHeadersDirectory(upstream.path(""), "", .{});
+    dear_imgui_lib.installHeadersDirectory(upstream.path("."), "", .{});
     dear_imgui_lib.linkLibC();
     dear_imgui_lib.addCSourceFiles(.{
         .root = upstream.path(""),
