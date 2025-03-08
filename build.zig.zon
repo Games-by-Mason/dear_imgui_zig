@@ -1,15 +1,16 @@
 .{
-    .name = "dear_imgui_zig",
+    .name = .dear_imgui,
+    .fingerprint = 0xc1cc609af54040bd,
     .version = "0.0.0",
-    .minimum_zig_version = "0.14.0-dev.1820+ea527f7a8",
+    .minimum_zig_version = "0.14.0",
     .dependencies = .{
         .@"dear-imgui" = .{
             .url = "https://github.com/ocornut/imgui/archive/refs/tags/v1.91.0-docking.tar.gz",
-            .hash = "12202e9be2f239ed76eee410708478443039fa503011709763f3fa6bf5869595130b",
+            .hash = "N-V-__8AABsVbQAum-LyOe127uQQcIR4RDA5-lAwEXCXY_P6",
         },
         .@"Vulkan-Headers" = .{
             .url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.3.292.tar.gz",
-            .hash = "1220dba588188c5dfba1b294785b0ed360ad1ea2e69bf7c076169cffdeec2fa2c0b4",
+            .hash = "N-V-__8AAD79oQHbpYgYjF37obKUeFsO02CtHqLmm_fAdhac",
         },
     },
 

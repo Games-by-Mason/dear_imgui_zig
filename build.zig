@@ -60,7 +60,7 @@ pub fn build(b: *std.Build) void {
     dear_imgui_vulkan_lib.addIncludePath(upstream.path("backends"));
     const vulkan_headers = b.dependency("Vulkan-Headers", .{});
     dear_imgui_vulkan_lib.addIncludePath(vulkan_headers.path("include"));
-    dear_imgui_vulkan_lib.defineCMacro("IMGUI_IMPL_VULKAN_NO_PROTOTYPES", "1"); // Assumed in generator
+    dear_imgui_vulkan_lib.root_module.addCMacro("IMGUI_IMPL_VULKAN_NO_PROTOTYPES", "1"); // Assumed in generator
     dear_imgui_vulkan_lib.installHeadersDirectory(upstream.path("backends"), "", .{});
     dear_imgui_vulkan_lib.installHeadersDirectory(vulkan_headers.path("include"), "", .{});
     b.installArtifact(dear_imgui_vulkan_lib);
