@@ -134,7 +134,9 @@ const Header = struct {
 
         const Description = struct {
             kind: enum { Type, Function, Array, Pointer, Builtin, User },
-            storage_classes: []const enum { @"const" } = &.{},
+            // We explicitly set the enum size to u8 as a workaround for
+            // https://github.com/ziglang/zig/issues/23168
+            storage_classes: []const enum(u8) { @"const" } = &.{},
             inner_type: ?*Description = null,
             bounds: ?[]const u8 = null, // Literal or variable
             builtin_type: ?Builtin = null,
