@@ -21,10 +21,12 @@ pub fn build(b: *std.Build) void {
     const upstream = b.dependency("dear-imgui", .{});
 
     // Compile Dear ImGui as a static library
-    const dear_imgui_lib = b.addStaticLibrary(.{
+    const dear_imgui_lib = b.addLibrary(.{
         .name = "dear_imgui",
-        .target = target,
-        .optimize = optimize_external,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize_external,
+        }),
     });
     dear_imgui_lib.addIncludePath(upstream.path(""));
     dear_imgui_lib.installHeadersDirectory(upstream.path("."), "", .{});
@@ -48,10 +50,12 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(dear_imgui_lib);
 
     // Compile the Vulkan backend as a static library
-    const dear_imgui_vulkan_lib = b.addStaticLibrary(.{
+    const dear_imgui_vulkan_lib = b.addLibrary(.{
         .name = "dear_imgui_vulkan",
-        .target = target,
-        .optimize = optimize_external,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize_external,
+        }),
     });
     dear_imgui_vulkan_lib.linkLibrary(dear_imgui_lib);
     dear_imgui_vulkan_lib.addCSourceFile(.{ .file = upstream.path("backends/imgui_impl_vulkan.cpp"), .flags = flags });
@@ -68,9 +72,11 @@ pub fn build(b: *std.Build) void {
     // Compile the generator
     const generate_exe = b.addExecutable(.{
         .name = "generate",
-        .root_source_file = b.path("src/generate.zig"),
-        .target = native_target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/generate.zig"),
+            .target = native_target,
+            .optimize = optimize,
+        }),
     });
 
     const generate_cmd = b.addRunArtifact(generate_exe);

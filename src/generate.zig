@@ -182,8 +182,9 @@ pub fn main() !void {
 
     const out = try std.fs.cwd().createFile(out_path, .{});
     defer out.close();
-    var buf = std.io.bufferedWriter(out.writer());
-    const writer = buf.writer();
+    var writer_buf: [4096]u8 = undefined;
+    var file_writer = out.writerStreaming(&writer_buf);
+    const writer = &file_writer.interface;
 
     // Write the prefix
     if (prefix_path) |p| {
@@ -222,7 +223,7 @@ pub fn main() !void {
         // Get a list of cimgui methods. These were already written as externs, and can be aliased
         // when we write their respective types.
         var methods = try Methods.get(allocator, &header.value);
-        defer methods.deinit();
+        defer methods.deinit(allocator);
 
         // Write cimgui enums as Zig enums.
         try writeEnums(allocator, writer, &header.value);
@@ -243,7 +244,7 @@ pub fn main() !void {
     }
 
     // Flush and exit
-    try buf.flush();
+    try writer.flush();
 }
 
 fn getDeclarations(allocator: Allocator, header: *const Header) !Declarations {
@@ -347,7 +348,7 @@ fn writeExternFunctions(
             }
             try writer.writeAll(", ");
         }
-        try writer.writeAll(") callconv(.C) ");
+        try writer.writeAll(") callconv(.c) ");
         try writeType(writer, function.return_type, declarations, .{ .is_result = true });
         try writer.writeAll(";\n");
     }
@@ -383,12 +384,12 @@ const Methods = struct {
         // Initialize an empty method list for each type
         var types = std.StringArrayHashMap(std.ArrayList([]const u8)).init(allocator);
         errdefer types.deinit();
-        errdefer for (types.values()) |methods| {
-            methods.deinit();
+        errdefer for (types.values()) |*methods| {
+            methods.deinit(allocator);
         };
         for (header.structs) |ty| {
-            const methods = std.ArrayList([]const u8).init(allocator);
-            errdefer methods.deinit();
+            var methods: std.ArrayList([]const u8) = .empty;
+            errdefer methods.deinit(allocator);
             try types.put(ty.name, methods);
         }
 
@@ -399,16 +400,16 @@ const Methods = struct {
 
             if (function.original_class) |class| {
                 const methods = types.getPtr(class).?;
-                try methods.append(function.name);
+                try methods.append(allocator, function.name);
             }
         }
 
         return .{ .types = types };
     }
 
-    fn deinit(self: *Methods) void {
-        for (self.types.values()) |methods| {
-            methods.deinit();
+    fn deinit(self: *Methods, allocator: Allocator) void {
+        for (self.types.values()) |*methods| {
+            methods.deinit(allocator);
         }
         self.types.deinit();
         self.* = undefined;
@@ -611,7 +612,7 @@ fn writeType(
     ty: Header.Type,
     declarations: *const Declarations,
     hints: WriteTypeHints,
-) @TypeOf(writer).Error!void {
+) std.Io.Writer.Error!void {
     // Handle function pointers which are stored separately.
     if (ty.type_details) |details| switch (details.flavour) {
         .function_pointer => return writeFunctionPointer(writer, details, declarations),
@@ -637,7 +638,7 @@ fn writeFunctionPointer(
         try writeType(writer, argument.type, declarations, .{});
         try writer.writeAll(", ");
     }
-    try writer.writeAll(") callconv(.C) ");
+    try writer.writeAll(") callconv(.c) ");
     try writeType(writer, details.return_type.*, declarations, .{});
 }
 
