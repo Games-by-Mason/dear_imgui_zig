@@ -44,7 +44,7 @@ pub fn build(b: *std.Build) void {
     });
     dear_imgui_lib.addCSourceFiles(.{
         .root = b.path("src/cached"),
-        .files = &.{"cimgui.cpp"},
+        .files = &.{"dcimgui.cpp"},
         .flags = flags,
     });
     b.installArtifact(dear_imgui_lib);
@@ -59,7 +59,7 @@ pub fn build(b: *std.Build) void {
     });
     dear_imgui_vulkan_lib.linkLibrary(dear_imgui_lib);
     dear_imgui_vulkan_lib.addCSourceFile(.{ .file = upstream.path("backends/imgui_impl_vulkan.cpp"), .flags = flags });
-    dear_imgui_vulkan_lib.addCSourceFile(.{ .file = b.path("src/cached/cimgui_impl_vulkan.cpp"), .flags = flags });
+    dear_imgui_vulkan_lib.addCSourceFile(.{ .file = b.path("src/cached/dcimgui_impl_vulkan.cpp"), .flags = flags });
     dear_imgui_vulkan_lib.addIncludePath(upstream.path(""));
     dear_imgui_vulkan_lib.addIncludePath(upstream.path("backends"));
     const vulkan_headers = b.dependency("Vulkan-Headers", .{});
@@ -90,7 +90,7 @@ pub fn build(b: *std.Build) void {
 
     // Generate Zig bindings for Dear ImGui
     const generate_dear_imgui = b.addRunArtifact(generate_exe);
-    generate_dear_imgui.addFileArg(b.path("src/cached/cimgui.json"));
+    generate_dear_imgui.addFileArg(b.path("src/cached/dcimgui.json"));
     const dear_imgui_zig = generate_dear_imgui.addOutputFileArg("dear_imgui.zig");
     generate_dear_imgui.addFileArg(b.path("src/templates/cimgui_prefix.zig.template"));
     generate_dear_imgui.addFileArg(b.path("src/templates/cimgui_postfix.zig.template"));
@@ -103,7 +103,7 @@ pub fn build(b: *std.Build) void {
 
     // Generate Zig bindings for the Vulkan backend
     const generate_vulkan = b.addRunArtifact(generate_exe);
-    generate_vulkan.addFileArg(b.path("src/cached/cimgui_impl_vulkan.json"));
+    generate_vulkan.addFileArg(b.path("src/cached/dcimgui_impl_vulkan.json"));
     const dear_imgui_vulkan_zig = generate_vulkan.addOutputFileArg("dear_imgui_impl_vulkan.zig");
     generate_vulkan.addFileArg(b.path("src/templates/impl_vulkan_prefix.zig.template"));
     generate_vulkan.addFileArg(b.path("src/templates/impl_vulkan_postfix.zig.template"));

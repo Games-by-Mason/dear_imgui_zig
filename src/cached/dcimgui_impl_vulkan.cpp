@@ -10,7 +10,7 @@
 // Wrap this in a namespace to keep it separate from the C++ API
 namespace cimgui
 {
-#include "cimgui_impl_vulkan.h"
+#include "dcimgui_impl_vulkan.h"
 }
 
 // By-value struct conversions
@@ -44,19 +44,14 @@ CIMGUI_IMPL_API void cimgui::cImGui_ImplVulkan_RenderDrawDataEx(cimgui::ImDrawDa
     ::ImGui_ImplVulkan_RenderDrawData(reinterpret_cast<::ImDrawData*>(draw_data), command_buffer, pipeline);
 }
 
-CIMGUI_IMPL_API bool cimgui::cImGui_ImplVulkan_CreateFontsTexture(void)
-{
-    return ::ImGui_ImplVulkan_CreateFontsTexture();
-}
-
-CIMGUI_IMPL_API void cimgui::cImGui_ImplVulkan_DestroyFontsTexture(void)
-{
-    ::ImGui_ImplVulkan_DestroyFontsTexture();
-}
-
 CIMGUI_IMPL_API void cimgui::cImGui_ImplVulkan_SetMinImageCount(uint32_t min_image_count)
 {
     ::ImGui_ImplVulkan_SetMinImageCount(min_image_count);
+}
+
+CIMGUI_IMPL_API void cimgui::cImGui_ImplVulkan_UpdateTexture(ImTextureData* tex)
+{
+    ::ImGui_ImplVulkan_UpdateTexture(tex);
 }
 
 CIMGUI_IMPL_API VkDescriptorSet cimgui::cImGui_ImplVulkan_AddTexture(VkSampler sampler, VkImageView image_view, VkImageLayout image_layout)
@@ -69,14 +64,14 @@ CIMGUI_IMPL_API void       cimgui::cImGui_ImplVulkan_RemoveTexture(VkDescriptorS
     ::ImGui_ImplVulkan_RemoveTexture(descriptor_set);
 }
 
-CIMGUI_IMPL_API bool cimgui::cImGui_ImplVulkan_LoadFunctions(PFN_vkVoidFunction (*loader_func)(const char* function_name, void* user_data))
+CIMGUI_IMPL_API bool cimgui::cImGui_ImplVulkan_LoadFunctions(uint32_t api_version, PFN_vkVoidFunction (*loader_func)(const char* function_name, void* user_data))
 {
-    return ::ImGui_ImplVulkan_LoadFunctions(loader_func);
+    return ::ImGui_ImplVulkan_LoadFunctions(api_version, loader_func);
 }
 
-CIMGUI_IMPL_API bool cimgui::cImGui_ImplVulkan_LoadFunctionsEx(PFN_vkVoidFunction (*loader_func)(const char* function_name, void* user_data), void* user_data)
+CIMGUI_IMPL_API bool cimgui::cImGui_ImplVulkan_LoadFunctionsEx(uint32_t api_version, PFN_vkVoidFunction (*loader_func)(const char* function_name, void* user_data), void* user_data)
 {
-    return ::ImGui_ImplVulkan_LoadFunctions(loader_func, user_data);
+    return ::ImGui_ImplVulkan_LoadFunctions(api_version, loader_func, user_data);
 }
 
 CIMGUI_IMPL_API void          cimgui::cImGui_ImplVulkanH_CreateOrResizeWindow(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device, cimgui::ImGui_ImplVulkanH_Window* wd, uint32_t queue_family, const VkAllocationCallbacks* allocator, int w, int h, uint32_t min_image_count)
@@ -97,6 +92,16 @@ CIMGUI_IMPL_API VkSurfaceFormatKHR cimgui::cImGui_ImplVulkanH_SelectSurfaceForma
 CIMGUI_IMPL_API VkPresentModeKHR cimgui::cImGui_ImplVulkanH_SelectPresentMode(VkPhysicalDevice physical_device, VkSurfaceKHR surface, const VkPresentModeKHR* request_modes, int request_modes_count)
 {
     return ::ImGui_ImplVulkanH_SelectPresentMode(physical_device, surface, request_modes, request_modes_count);
+}
+
+CIMGUI_IMPL_API VkPhysicalDevice cimgui::cImGui_ImplVulkanH_SelectPhysicalDevice(VkInstance instance)
+{
+    return ::ImGui_ImplVulkanH_SelectPhysicalDevice(instance);
+}
+
+CIMGUI_IMPL_API uint32_t      cimgui::cImGui_ImplVulkanH_SelectQueueFamilyIndex(VkPhysicalDevice physical_device)
+{
+    return ::ImGui_ImplVulkanH_SelectQueueFamilyIndex(physical_device);
 }
 
 CIMGUI_IMPL_API int           cimgui::cImGui_ImplVulkanH_GetMinImageCountFromPresentMode(VkPresentModeKHR present_mode)
