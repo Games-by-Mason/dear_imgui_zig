@@ -51,7 +51,8 @@ CIMGUI_IMPL_API void cimgui::cImGui_ImplVulkan_SetMinImageCount(uint32_t min_ima
 
 CIMGUI_IMPL_API void cimgui::cImGui_ImplVulkan_UpdateTexture(ImTextureData* tex)
 {
-    ::ImGui_ImplVulkan_UpdateTexture(tex);
+    // NOTE(mason): fixed this binding by hand
+    ::ImGui_ImplVulkan_UpdateTexture(reinterpret_cast<::ImTextureData*>(tex));
 }
 
 CIMGUI_IMPL_API VkDescriptorSet cimgui::cImGui_ImplVulkan_AddTexture(VkSampler sampler, VkImageView image_view, VkImageLayout image_layout)
