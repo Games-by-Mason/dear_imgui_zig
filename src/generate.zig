@@ -91,31 +91,7 @@ const Header = struct {
     // are added.
     const Conditional = struct {
         condition: enum { ifdef, ifndef, @"if", ifnot },
-        expression: enum {
-            IMGUI_DISABLE_OBSOLETE_FUNCTIONS,
-            IMGUI_DISABLE_OBSOLETE_KEYIO,
-            IMGUI_OVERRIDE_DRAWVERT_STRUCT_LAYOUT,
-            IMGUI_USE_WCHAR32,
-            ImTextureID,
-            ImDrawIdx,
-            ImDrawCallback,
-            CIMGUI_API,
-            CIMGUI_IMPL_API,
-            @"defined(_MSC_VER)&&!defined(__clang__)&&!defined(__INTEL_COMPILER)&&!defined(IMGUI_DEBUG_PARANOID)",
-            @"defined(IMGUI_DISABLE_OBSOLETE_FUNCTIONS)&&!defined(IMGUI_DISABLE_OBSOLETE_KEYIO)",
-            IMGUI_DEFINE_MATH_OPERATORS,
-            IM_COL32_R_SHIFT,
-            IMGUI_USE_BGRA_PACKED_COLOR,
-            IM_DRAWLIST_TEX_LINES_WIDTH_MAX,
-            @"defined(IMGUI_DISABLE_METRICS_WINDOW)&&!defined(IMGUI_DISABLE_OBSOLETE_FUNCTIONS)&&!defined(IMGUI_DISABLE_DEBUG_TOOLS)",
-            @"defined(IMGUI_HAS_IMSTR)",
-            IMGUI_HAS_IMSTR,
-            @"defined(IMGUI_IMPL_VULKAN_NO_PROTOTYPES)&&!defined(VK_NO_PROTOTYPES)",
-            @"defined(VK_USE_PLATFORM_WIN32_KHR)&&!defined(NOMINMAX)",
-            @"defined(VK_VERSION_1_3)|| defined(VK_KHR_dynamic_rendering)",
-            IMGUI_IMPL_VULKAN_HAS_DYNAMIC_RENDERING,
-            IMGUI_DISABLE_DEBUG_TOOLS,
-        },
+        expression: []const u8,
     };
 
     const Type = struct {
@@ -302,7 +278,16 @@ fn writeDefines(writer: anytype, header: *const Header) !void {
         if (define.is_internal) continue;
         if (skip(define.conditionals)) continue;
         if (define.content) |content| {
-            try writer.print("const {s} = {s};\n", .{ define.name, content });
+            if (std.mem.startsWith(u8, content, "(")) {
+                const end = std.mem.indexOfScalar(u8, content, ')').?;
+                const ty = content[1..end];
+                const val = content[end + 1 ..];
+                try writer.print("const {s}: ", .{define.name});
+                try writeTypeName(writer, ty);
+                try writer.print(" = {s};\n", .{val});
+            } else {
+                try writer.print("const {s} = {s};\n", .{ define.name, content });
+            }
         }
     }
 }
@@ -832,32 +817,41 @@ fn writePointerType(
 // Returns true if we should skip due to a conditional
 fn skip(conditionals: []const Header.Conditional) bool {
     for (conditionals) |conditional| {
-        const defined = switch (conditional.expression) {
-            .IMGUI_DISABLE_OBSOLETE_FUNCTIONS,
-            .IMGUI_DISABLE_OBSOLETE_KEYIO,
-            .CIMGUI_API,
-            .CIMGUI_IMPL_API,
-            .@"defined(IMGUI_IMPL_VULKAN_NO_PROTOTYPES)&&!defined(VK_NO_PROTOTYPES)",
-            .@"defined(VK_USE_PLATFORM_WIN32_KHR)&&!defined(NOMINMAX)",
-            .IMGUI_IMPL_VULKAN_HAS_DYNAMIC_RENDERING,
-            .@"defined(VK_VERSION_1_3)|| defined(VK_KHR_dynamic_rendering)",
-            => true,
-            .IMGUI_OVERRIDE_DRAWVERT_STRUCT_LAYOUT,
-            .IMGUI_USE_WCHAR32,
-            .ImTextureID,
-            .ImDrawIdx,
-            .ImDrawCallback,
-            .@"defined(_MSC_VER)&&!defined(__clang__)&&!defined(__INTEL_COMPILER)&&!defined(IMGUI_DEBUG_PARANOID)",
-            .@"defined(IMGUI_DISABLE_OBSOLETE_FUNCTIONS)&&!defined(IMGUI_DISABLE_OBSOLETE_KEYIO)",
-            .IMGUI_DEFINE_MATH_OPERATORS,
-            .IM_COL32_R_SHIFT,
-            .IMGUI_USE_BGRA_PACKED_COLOR,
-            .IM_DRAWLIST_TEX_LINES_WIDTH_MAX,
-            .@"defined(IMGUI_DISABLE_METRICS_WINDOW)&&!defined(IMGUI_DISABLE_OBSOLETE_FUNCTIONS)&&!defined(IMGUI_DISABLE_DEBUG_TOOLS)",
-            .@"defined(IMGUI_HAS_IMSTR)",
-            .IMGUI_HAS_IMSTR,
-            .IMGUI_DISABLE_DEBUG_TOOLS,
-            => false,
+        // We just manually decide which of these are correct rather than trying to automatically
+        // parse them. We do this with a chain of if statements because std.json doesn't give us any
+        // information about what string it saw or what line number the error was on if we try to
+        // parse it as an enum, which is a huge pain when upgrading dear imgui.
+        const defined = b: {
+            // True conditionals
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_DISABLE_OBSOLETE_FUNCTIONS")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_DISABLE_OBSOLETE_FUNCTIONS")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_DISABLE_OBSOLETE_KEYIO")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "CIMGUI_API")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "CIMGUI_IMPL_API")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "defined(IMGUI_IMPL_VULKAN_NO_PROTOTYPES)&&!defined(VK_NO_PROTOTYPES)")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "defined(VK_USE_PLATFORM_WIN32_KHR)&&!defined(NOMINMAX)")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_IMPL_VULKAN_HAS_DYNAMIC_RENDERING")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "defined(VK_VERSION_1_3)|| defined(VK_KHR_dynamic_rendering)")) break :b true;
+
+            // False conditionals
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_OVERRIDE_DRAWVERT_STRUCT_LAYOUT")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_USE_WCHAR32")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "ImTextureID")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "ImDrawIdx")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "ImDrawCallback")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "defined(_MSC_VER)&&!defined(__clang__)&&!defined(__INTEL_COMPILER)&&!defined(IMGUI_DEBUG_PARANOID)")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "defined(IMGUI_DISABLE_OBSOLETE_FUNCTIONS)&&!defined(IMGUI_DISABLE_OBSOLETE_KEYIO)")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_DEFINE_MATH_OPERATORS")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "IM_COL32_R_SHIFT")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_USE_BGRA_PACKED_COLOR")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "IM_DRAWLIST_TEX_LINES_WIDTH_MAX")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "defined(IMGUI_DISABLE_METRICS_WINDOW)&&!defined(IMGUI_DISABLE_OBSOLETE_FUNCTIONS)&&!defined(IMGUI_DISABLE_DEBUG_TOOLS)")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "defined(IMGUI_HAS_IMSTR)")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_HAS_IMSTR")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_DISABLE_DEBUG_TOOLS")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "ImTextureID_Invalid")) break :b false;
+
+            std.debug.panic("unexpected preprocessor conditional: {s}", .{conditional.expression});
         };
         switch (conditional.condition) {
             .ifdef, .@"if" => if (!defined) return true,
@@ -909,10 +903,16 @@ fn writeTypeName(writer: anytype, raw: []const u8) !void {
         }
     }
 
+    const escaped = std.mem.indexOfScalar(u8, name, '<') != null;
+
+    if (escaped) try writer.writeAll("@\"");
+
     for (name) |c| switch (c) {
         '_' => {},
         else => try writer.writeByte(c),
     };
+
+    if (escaped) try writer.writeByte('"');
 }
 
 // Convert a cimgui field name to a Zig field name

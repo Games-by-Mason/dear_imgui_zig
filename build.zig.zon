@@ -5,10 +5,8 @@
     .minimum_zig_version = "0.15.1",
     .dependencies = .{
         .@"dear-imgui" = .{
-            // XXX: ...
-            // .url = "https://github.com/ocornut/imgui/archive/refs/tags/v1.92.2b-docking.tar.gz",
-            // .hash = "N-V-__8AAPZKeQDWGL4ckVmICNUMMWIikMKny4fQHvs2tCFh",
-            .path = "../imgui",
+            .url = "https://github.com/ocornut/imgui/archive/refs/tags/v1.92.2b-docking.tar.gz",
+            .hash = "N-V-__8AAPZKeQDWGL4ckVmICNUMMWIikMKny4fQHvs2tCFh",
         },
         .@"Vulkan-Headers" = .{
             .url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.313.tar.gz",

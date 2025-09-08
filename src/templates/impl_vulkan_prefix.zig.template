@@ -1,4 +1,5 @@
 const DrawData = @import("dear_imgui").DrawData;
+const TextureData = @import("dear_imgui").TextureData;
 
 const Options = struct {
     PFNvkVoidFunction: type,
@@ -19,6 +20,7 @@ const Options = struct {
     VkInstance: type,
     VkPhysicalDevice: type,
     VkPipeline: type,
+    VkPipelineLayout: type,
     VkPipelineCache: type,
     VkPipelineRenderingCreateInfoKHR: type,
     VkPresentModeKHR: type,
@@ -54,6 +56,7 @@ pub fn get(options: Options) type {
     const VkInstance = options.VkInstance;
     const VkPhysicalDevice = options.VkPhysicalDevice;
     const VkPipeline = options.VkInstance;
+    const VkPipelineLayout = options.VkPipelineLayout;
     const VkPipelineCache = options.VkPipelineCache;
     const VkPipelineRenderingCreateInfoKHR = options.VkPipelineRenderingCreateInfoKHR;
     const VkPresentModeKHR = options.VkPresentModeKHR;
@@ -68,3 +71,8 @@ pub fn get(options: Options) type {
     const VkSwapchainKHR = options.VkSwapchainKHR;
 
     return struct {
+
+    // Instantiation of relevant `ImVector`s not provided by the dear bindings for some reason
+    pub const @"Vector<ImGuiImplVulkanHFrame>" = extern struct { size: c_int, capacity: c_int, data: ?[*]Frame };
+    pub const @"Vector<ImGuiImplVulkanHFrameSemaphores>" = extern struct { size: c_int, capacity: c_int, data: ?[*]Frame };
+
