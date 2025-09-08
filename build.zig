@@ -69,6 +69,26 @@ pub fn build(b: *std.Build) void {
     dear_imgui_vulkan_lib.installHeadersDirectory(vulkan_headers.path("include"), "", .{});
     b.installArtifact(dear_imgui_vulkan_lib);
 
+    // Compile the SDL3 backend as a static library
+    const dear_imgui_sdl3_lib = b.addLibrary(.{
+        .name = "dear_imgui_vulkan",
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize_external,
+        }),
+    });
+    dear_imgui_sdl3_lib.linkLibrary(dear_imgui_lib);
+    dear_imgui_sdl3_lib.addCSourceFile(.{ .file = upstream.path("backends/imgui_impl_sdl3.cpp"), .flags = flags });
+    dear_imgui_sdl3_lib.addCSourceFile(.{ .file = b.path("src/cached/dcimgui_impl_sdl3.cpp"), .flags = flags });
+    dear_imgui_sdl3_lib.addIncludePath(upstream.path(""));
+    dear_imgui_sdl3_lib.addIncludePath(upstream.path("backends"));
+    const sdl = b.dependency("sdl", .{});
+    dear_imgui_sdl3_lib.addIncludePath(sdl.path("include"));
+    // dear_imgui_sdl3_lib.root_module.addCMacro("IMGUI_IMPL_VULKAN_NO_PROTOTYPES", "1"); // Assumed in generator // XXX: ...
+    dear_imgui_sdl3_lib.installHeadersDirectory(upstream.path("backends"), "", .{});
+    // dear_imgui_sdl3_lib.installHeadersDirectory(vulkan_headers.path("include"), "", .{}); // XXX: ...
+    b.installArtifact(dear_imgui_sdl3_lib);
+
     // Compile the generator
     const generate_exe = b.addExecutable(.{
         .name = "generate",
@@ -114,4 +134,17 @@ pub fn build(b: *std.Build) void {
     });
     dear_imgui_vulkan_zig_module.linkLibrary(dear_imgui_vulkan_lib);
     dear_imgui_vulkan_zig_module.addImport("dear_imgui", dear_imgui_zig_module);
+
+    // Generate Zig bindings for the SDL3 backend
+    const generate_sdl3 = b.addRunArtifact(generate_exe);
+    generate_sdl3.addFileArg(b.path("src/cached/dcimgui_impl_sdl3.json"));
+    const dear_imgui_sdl3_zig = generate_sdl3.addOutputFileArg("dear_imgui_impl_sdl3.zig");
+    generate_sdl3.addFileArg(b.path("src/templates/impl_sdl3_prefix.zig.template"));
+    generate_sdl3.addFileArg(b.path("src/templates/impl_sdl3_postfix.zig.template"));
+    const dear_imgui_sdl3_zig_module = b.addModule("dear_imgui_sdl3", .{
+        .root_source_file = dear_imgui_sdl3_zig,
+        .target = target,
+        .optimize = optimize,
+    });
+    dear_imgui_sdl3_zig_module.linkLibrary(dear_imgui_sdl3_lib);
 }

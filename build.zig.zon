@@ -12,6 +12,11 @@
             .url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.313.tar.gz",
             .hash = "N-V-__8AAPLT7gH4vgN7Xo6yZlOMrzllGbdvVxxhrwUvgI9r",
         },
+        .sdl = .{
+            .url = "https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.2.14.tar.gz",
+            .hash = "N-V-__8AAHRriwPslozjEw46IksOzPlNxJRXM087krt8ynXh",
+            .version = "3.2.14",
+        },
     },
 
     .paths = .{

@@ -18,7 +18,9 @@ The static library for Dear ImGui, and supported backends, are provided as artif
 
 ## How to use the backends
 
-Right now, this package only exports the Vulkan backend: `dear_imgui_vulkan`.
+Right now, this package only exports the following backends:
+* `dear_imgui_vulkan`
+* `dear_imgui_sdl3`
 
 Contributions are welcome if you'd like to add others. The process should be fairly straightforward.
 

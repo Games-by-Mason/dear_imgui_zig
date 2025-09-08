@@ -97,6 +97,7 @@ const Header = struct {
     const Type = struct {
         type_details: ?Details = null,
         description: Description,
+        declaration: ?[]const u8 = null,
 
         const Details = struct {
             flavour: enum { function_pointer },
@@ -300,7 +301,11 @@ fn writeTypedefs(writer: anytype, header: *const Header, declarations: *const De
         // Skip duplicate declarations (e.g. naming enums as ints in C)
         if (declarations.contains(typedef.name)) continue;
 
-        // Write the typedef
+        // Skip redundant typedefs (comes up with `SDL_Event`)
+        if (typedef.type.declaration != null and
+            std.mem.eql(u8, typedef.name, typedef.type.declaration.?)) continue;
+
+        // Write the typedef prefix
         try writer.writeAll("const ");
         try writeTypeName(writer, typedef.name);
         try writer.writeAll(" = ");
@@ -893,7 +898,7 @@ fn writeTypeName(writer: anytype, raw: []const u8) !void {
 
         // Backend prefixes
         {
-            const prefixes: []const []const u8 = &.{ "_ImplVulkanH", "_ImplVulkan" };
+            const prefixes: []const []const u8 = &.{ "_ImplVulkanH", "_ImplVulkan", "_ImplSDL3" };
             for (prefixes) |prefix| {
                 if (std.mem.startsWith(u8, name, prefix)) {
                     name = name[prefix.len..];
@@ -956,7 +961,7 @@ fn writeFunctionName(writer: anytype, raw: []const u8) !void {
 
     // Imgui prefixes
     {
-        const prefixes: []const []const u8 = &.{ "cImGui_ImplVulkan", "ImGui", "Im" };
+        const prefixes: []const []const u8 = &.{ "cImGui_ImplVulkan", "cImGui_ImplSDL3", "ImGui", "Im" };
         for (prefixes) |prefix| {
             if (std.mem.startsWith(u8, name, prefix)) {
                 name = name[prefix.len..];

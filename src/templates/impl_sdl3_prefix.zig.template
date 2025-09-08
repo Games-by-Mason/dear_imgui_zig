@@ -1,0 +1,8 @@
+const Options = struct {
+    SDLEvent: type,
+};
+
+pub fn get(options: Options) type {
+    const SDLEvent = options.SDLEvent;
+
+    return struct {
