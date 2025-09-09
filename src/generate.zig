@@ -829,7 +829,6 @@ fn skip(conditionals: []const Header.Conditional) bool {
         const defined = b: {
             // True conditionals
             if (std.mem.eql(u8, conditional.expression, "IMGUI_DISABLE_OBSOLETE_FUNCTIONS")) break :b true;
-            if (std.mem.eql(u8, conditional.expression, "IMGUI_DISABLE_OBSOLETE_FUNCTIONS")) break :b true;
             if (std.mem.eql(u8, conditional.expression, "IMGUI_DISABLE_OBSOLETE_KEYIO")) break :b true;
             if (std.mem.eql(u8, conditional.expression, "CIMGUI_API")) break :b true;
             if (std.mem.eql(u8, conditional.expression, "CIMGUI_IMPL_API")) break :b true;
@@ -923,6 +922,7 @@ fn writeTypeName(writer: anytype, raw: []const u8) !void {
 // Convert a cimgui field name to a Zig field name
 fn writeFieldName(writer: anytype, name: []const u8) !void {
     var escape = false;
+    var prev_underscore = false;
     for (name, 0..) |c, i| {
         switch (c) {
             '0'...'9' => {
@@ -936,13 +936,14 @@ fn writeFieldName(writer: anytype, name: []const u8) !void {
             'A'...'Z' => {
                 if (i > 0 and i < name.len - 1) switch (name[i + 1]) {
                     'A'...'Z', '_' => {},
-                    else => try writer.writeByte('_'),
+                    else => if (!prev_underscore) try writer.writeByte('_'),
                 };
                 try writer.writeByte(c + 32);
             },
             '_' => if (i != name.len - 1) try writer.writeByte('_'),
             else => std.debug.panic("unexpected char in name: {c}", .{c}),
         }
+        if (c == '_') prev_underscore = true;
     }
     if (escape) try writer.writeAll("\"");
 }
