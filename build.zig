@@ -11,6 +11,11 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     const native_target = b.resolveTargetQuery(.{});
+    const test_filters = b.option(
+        []const []const u8,
+        "test-filter",
+        "Skip tests that do not match the specified filters.",
+    ) orelse &.{};
 
     const optimize_external = switch (optimize) {
         .Debug => .ReleaseSafe,
@@ -147,4 +152,22 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     dear_imgui_sdl3_zig_module.linkLibrary(dear_imgui_sdl3_lib);
+
+    const tests = b.addTest(.{
+        .root_module = dear_imgui_zig_module,
+        .filters = test_filters,
+    });
+    const run_lib_unit_tests = b.addRunArtifact(tests);
+
+    const test_step = b.step("test", "Run unit tests");
+    test_step.dependOn(&run_lib_unit_tests.step);
+
+    const docs = tests.getEmittedDocs();
+    const install_docs = b.addInstallDirectory(.{
+        .source_dir = docs,
+        .install_dir = .prefix,
+        .install_subdir = "docs",
+    });
+    const docs_step = b.step("docs", "Build the docs");
+    docs_step.dependOn(&install_docs.step);
 }
