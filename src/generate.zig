@@ -919,10 +919,24 @@ fn writeTypeName(writer: anytype, raw: []const u8) !void {
     if (escaped) try writer.writeByte('"');
 }
 
+const Case = enum {
+    upper,
+    lower,
+    none,
+
+    pub fn get(c: u8) Case {
+        return switch (c) {
+            'a'...'z' => .lower,
+            'A'...'Z' => .upper,
+            else => .none,
+        };
+    }
+};
+
 // Convert a cimgui field name to a Zig field name
 fn writeFieldName(writer: anytype, name: []const u8) !void {
     var escape = false;
-    var prev_underscore = false;
+    var prev_case: Case = .none;
     for (name, 0..) |c, i| {
         switch (c) {
             '0'...'9' => {
@@ -930,20 +944,18 @@ fn writeFieldName(writer: anytype, name: []const u8) !void {
                     escape = true;
                     try writer.writeAll("@\"");
                 }
-                try writer.writeByte(c);
             },
-            'a'...'z' => try writer.writeByte(c),
-            'A'...'Z' => {
-                if (i > 0 and i < name.len - 1) switch (name[i + 1]) {
-                    'A'...'Z', '_' => {},
-                    else => if (!prev_underscore) try writer.writeByte('_'),
-                };
-                try writer.writeByte(c + 32);
-            },
-            '_' => if (i != name.len - 1) try writer.writeByte('_'),
+            'a'...'z', 'A'...'Z', '_' => {},
             else => std.debug.panic("unexpected char in name: {c}", .{c}),
         }
-        if (c == '_') prev_underscore = true;
+        const case: Case = .get(c);
+        if (prev_case == .lower and case == .upper) {
+            try writer.writeByte('_');
+        } else if (case == .upper and prev_case == .upper and i < name.len - 1 and std.ascii.isLower(name[i + 1])) {
+            try writer.writeByte('_');
+        }
+        try writer.writeByte(std.ascii.toLower(c));
+        prev_case = case;
     }
     if (escape) try writer.writeAll("\"");
 }
