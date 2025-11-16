@@ -44,6 +44,11 @@ Here's how to build `cimgui.h`:
 python3 $DEAR_BINDINGS_PATH/dear_bindings.py -o src/cached/cimgui $DEAR_IMGUI_PATH/imgui.h
 ```
 
+Here's how to build `cimgui_internal.h`:
+```sh
+python3 $DEAR_BINDINGS_PATH/dear_bindings.py -o src/cached/cimgui_internal --include $DEAR_IMGUI_PATH/imgui.h $DEAR_IMGUI_PATH/imgui_internal.h
+```
+
 Here's how to build a backend, using Vulkan as an example:
 
 ```sh

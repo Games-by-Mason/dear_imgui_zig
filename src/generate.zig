@@ -8,6 +8,37 @@ const DeclarationKind = enum {
 };
 
 const Declarations = std.StringArrayHashMap(DeclarationKind);
+
+const Symbols = struct {
+    public: std.StringArrayHashMap(void),
+    front_buf: std.StringArrayHashMap(void),
+
+    pub fn init(allocator: Allocator) @This() {
+        return .{
+            .public = .init(allocator),
+            .front_buf = .init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *@This()) void {
+        self.public.deinit();
+        self.front_buf.deinit();
+    }
+
+    /// Returns true if there's already a public symbol with this name.
+    pub fn put(self: *@This(), name: []const u8) !bool {
+        const trimmed = std.mem.trimRight(u8, name, "_");
+        if (self.public.contains(trimmed)) return false;
+        try self.front_buf.put(trimmed, {});
+        return true;
+    }
+
+    pub fn makePublic(self: *@This()) void {
+        std.mem.swap(@FieldType(@This(), "public"), &self.public, &self.front_buf);
+        self.front_buf.clearRetainingCapacity();
+    }
+};
+
 const max_size = 5000000;
 
 // The header type we'll parse from JSON. Fields are only included as needed.
@@ -55,6 +86,7 @@ const Header = struct {
 
     const Struct = struct {
         name: []const u8,
+        is_internal: bool,
         is_anonymous: bool,
         kind: enum { @"struct", @"union" },
         forward_declaration: bool,
@@ -66,7 +98,7 @@ const Header = struct {
             is_anonymous: bool,
             type: Type,
             width: ?usize = null,
-            default_value: ?std.json.Value = null,
+            default_value: ?[]const u8 = null,
             conditionals: []const Conditional = &.{},
         };
     };
@@ -155,6 +187,7 @@ pub fn main() !void {
     const out_path = args.next().?;
     const prefix_path = args.next();
     const postfix_path = args.next();
+    const internal_path = args.next();
     std.debug.assert(args.next() == null);
 
     const out = try std.fs.cwd().createFile(out_path, .{});
@@ -171,45 +204,36 @@ pub fn main() !void {
         try writer.writeAll("\n// End of prefix\n\n");
     }
 
+    // Build a list of symbols so we can skip duplicates of public symbols in the internal headers
+    var symbols: Symbols = .init(allocator);
+    defer symbols.deinit();
+
     // Write the source
-    {
-        const source = try std.fs.cwd().readFileAlloc(allocator, in_path, max_size);
-        defer allocator.free(source);
+    const main_source = try std.fs.cwd().readFileAlloc(allocator, in_path, max_size);
+    defer allocator.free(main_source);
+    try writeSource(
+        allocator,
+        main_source,
+        writer,
+        &symbols,
+        false,
+    );
+    symbols.makePublic();
 
-        const header = try std.json.parseFromSlice(Header, allocator, source, .{
-            .ignore_unknown_fields = true,
-        });
-        defer header.deinit();
+    // Write the internal source, if supplied
+    if (internal_path) |p| {
+        const internal_source = try std.fs.cwd().readFileAlloc(allocator, p, max_size);
+        defer allocator.free(internal_source);
 
-        // We need the list of declarations up front.
-        var declarations = try getDeclarations(allocator, &header.value);
-        defer declarations.deinit();
-
-        // Write all defines as private constants.
-        try writeDefines(writer, &header.value);
-
-        // Write all typedefs as private constants.
-        try writeTypedefs(writer, &header.value, &declarations);
-
-        // Write all cimgui functions as private extern functions.
-        try writeExternFunctions(writer, &header.value, &declarations);
-
-        // Alias cimgui free functions under Zig friendly names.
-        try writeFreeFunctions(writer, &header.value);
-
-        // Get a list of cimgui methods. These were already written as externs, and can be aliased
-        // when we write their respective types.
-        var methods = try Methods.get(allocator, &header.value);
-        defer methods.deinit(allocator);
-
-        // Write cimgui enums as Zig enums.
-        try writeEnums(allocator, writer, &header.value);
-
-        // Write cimgui structs as Zig structs and unions.
-        try writeStructs(writer, &header.value, &declarations, &methods);
-
-        // Write helpers used by the other generated code.
-        try writeHelpers(writer);
+        try writer.writeAll("pub const internal = struct {\n");
+        try writeSource(
+            allocator,
+            internal_source,
+            writer,
+            &symbols,
+            true,
+        );
+        try writer.writeAll("};\n");
     }
 
     // Write the postfix
@@ -224,11 +248,60 @@ pub fn main() !void {
     try writer.flush();
 }
 
+fn writeSource(
+    allocator: Allocator,
+    source: []const u8,
+    writer: *std.Io.Writer,
+    symbols: *Symbols,
+    internal: bool,
+) !void {
+    const header = try std.json.parseFromSlice(Header, allocator, source, .{
+        .ignore_unknown_fields = true,
+    });
+    defer header.deinit();
+
+    // We need the list of declarations up front.
+    var declarations = try getDeclarations(allocator, &header.value);
+    defer declarations.deinit();
+
+    // Write all defines as private constants.
+    try writeDefines(writer, internal, symbols, &header.value);
+
+    // Write all typedefs as private constants.
+    try writeTypedefs(writer, &header.value, symbols, &declarations);
+
+    // Write all cimgui functions as private extern functions.
+    try writeExternFunctions(writer, &header.value, symbols, &declarations);
+
+    // Alias cimgui free functions under Zig friendly names.
+    try writeFreeFunctions(writer, &header.value, symbols);
+
+    // Get a list of cimgui methods. These were already written as externs, and can be aliased
+    // when we write their respective types.
+    var methods = try Methods.get(allocator, &header.value);
+    defer methods.deinit(allocator);
+
+    // Write cimgui enums as Zig enums.
+    try writeEnums(allocator, writer, internal, &header.value, symbols);
+
+    // Write cimgui structs as Zig structs and unions.
+    try writeStructs(writer, &header.value, &declarations, &methods, symbols);
+
+    // Write helpers used by the other generated code. We skip this for the internal header
+    // since we're going to concatenate it with the main header, so this stuff will already be
+    // available.
+    if (!internal) {
+        try writeHelpers(writer);
+    }
+}
+
 fn getDeclarations(allocator: Allocator, header: *const Header) !Declarations {
     var declarations = Declarations.init(allocator);
     errdefer declarations.deinit();
     for (header.structs) |ty| {
         if (skip(ty.conditionals)) continue;
+
+        const trimmed = std.mem.trimRight(u8, ty.name, "_");
 
         var kind: DeclarationKind = .normal;
         if (ty.forward_declaration) {
@@ -259,12 +332,10 @@ fn getDeclarations(allocator: Allocator, header: *const Header) !Declarations {
             };
         }
 
-        const trimmed = std.mem.trimRight(u8, ty.name, "_");
         try declarations.put(trimmed, kind);
     }
 
     for (header.enums) |e| {
-        if (e.is_internal) continue;
         if (skip(e.conditionals)) continue;
 
         const trimmed = std.mem.trimRight(u8, e.name, "_");
@@ -274,26 +345,36 @@ fn getDeclarations(allocator: Allocator, header: *const Header) !Declarations {
     return declarations;
 }
 
-fn writeDefines(writer: anytype, header: *const Header) !void {
+fn writeDefines(writer: anytype, internal: bool, symbols: *Symbols, header: *const Header) !void {
+    // We skip defines from the internal namespace for now
+    if (internal) return;
+
     for (header.defines) |define| {
-        if (define.is_internal) continue;
+        if (define.is_internal != internal) continue;
         if (skip(define.conditionals)) continue;
         if (define.content) |content| {
-            if (std.mem.startsWith(u8, content, "(")) {
-                const end = std.mem.indexOfScalar(u8, content, ')').?;
-                const ty = content[1..end];
-                const val = content[end + 1 ..];
-                try writer.print("const {s}: ", .{define.name});
-                try writeTypeName(writer, ty);
-                try writer.print(" = {s};\n", .{val});
-            } else {
-                try writer.print("const {s} = {s};\n", .{ define.name, content });
+            if (try symbols.put(define.name)) {
+                if (std.mem.startsWith(u8, content, "(")) {
+                    const end = std.mem.indexOfScalar(u8, content, ')').?;
+                    const ty = content[1..end];
+                    const val = content[end + 1 ..];
+                    try writer.print("const {s}: ", .{define.name});
+                    try writeTypeName(writer, ty);
+                    try writer.print(" = {s};\n", .{val});
+                } else {
+                    try writer.print("const {s} = {s};\n", .{ define.name, content });
+                }
             }
         }
     }
 }
 
-fn writeTypedefs(writer: anytype, header: *const Header, declarations: *const Declarations) !void {
+fn writeTypedefs(
+    writer: anytype,
+    header: *const Header,
+    symbols: *Symbols,
+    declarations: *const Declarations,
+) !void {
     for (header.typedefs) |typedef| {
         // Skip typedefs skipped by the preprocessor
         if (skip(typedef.conditionals)) continue;
@@ -306,41 +387,46 @@ fn writeTypedefs(writer: anytype, header: *const Header, declarations: *const De
             std.mem.eql(u8, typedef.name, typedef.type.declaration.?)) continue;
 
         // Write the typedef prefix
-        try writer.writeAll("const ");
-        try writeTypeName(writer, typedef.name);
-        try writer.writeAll(" = ");
-        try writeType(writer, typedef.type, declarations, .{});
-        try writer.writeAll(";\n");
+        if (try symbols.put(typedef.name)) {
+            try writer.writeAll("const ");
+            try writeTypeName(writer, typedef.name);
+            try writer.writeAll(" = ");
+            try writeType(writer, typedef.type, declarations, .{});
+            try writer.writeAll(";\n");
+        }
     }
 }
 
 fn writeExternFunctions(
     writer: anytype,
     header: *const Header,
+    symbols: *Symbols,
     declarations: *const Declarations,
 ) !void {
     for (header.functions) |function| {
         if (skip(function.conditionals)) continue;
         if (argsContainsVaList(function.arguments)) continue;
 
-        try writer.print("extern fn {s}(", .{function.name});
-        for (function.arguments) |argument| {
-            if (argument.type) |ty| {
-                std.debug.assert(!argument.is_varargs);
-                try writeType(writer, ty, declarations, .{
-                    .is_instance_pointer = argument.is_instance_pointer,
-                    .is_argument = true,
-                    .default_null = if (argument.default_value) |d| std.mem.eql(u8, d, "NULL") else false,
-                });
-            } else {
-                std.debug.assert(argument.is_varargs);
-                try writer.writeAll("...");
+        if (try symbols.put(function.name)) {
+            try writer.print("extern fn {s}(", .{function.name});
+            for (function.arguments) |argument| {
+                if (argument.type) |ty| {
+                    std.debug.assert(!argument.is_varargs);
+                    try writeType(writer, ty, declarations, .{
+                        .is_instance_pointer = argument.is_instance_pointer,
+                        .is_argument = true,
+                        .default_null = if (argument.default_value) |d| std.mem.eql(u8, d, "NULL") else false,
+                    });
+                } else {
+                    std.debug.assert(argument.is_varargs);
+                    try writer.writeAll("...");
+                }
+                try writer.writeAll(", ");
             }
-            try writer.writeAll(", ");
+            try writer.writeAll(") callconv(.c) ");
+            try writeType(writer, function.return_type, declarations, .{ .is_result = true });
+            try writer.writeAll(";\n");
         }
-        try writer.writeAll(") callconv(.c) ");
-        try writeType(writer, function.return_type, declarations, .{ .is_result = true });
-        try writer.writeAll(";\n");
     }
 }
 
@@ -355,15 +441,17 @@ fn argsContainsVaList(arguments: []const Header.Function.Argument) bool {
     return false;
 }
 
-fn writeFreeFunctions(writer: anytype, header: *const Header) !void {
+fn writeFreeFunctions(writer: anytype, header: *const Header, symbols: *Symbols) !void {
     for (header.functions) |function| {
         if (skip(function.conditionals)) continue;
         if (function.original_class != null) continue;
         if (argsContainsVaList(function.arguments)) continue;
 
-        try writer.writeAll("pub const ");
-        try writeFunctionName(writer, function.name);
-        try writer.print(" = {s};\n", .{function.name});
+        if (try symbols.put(function.name)) {
+            try writer.writeAll("pub const ");
+            try writeFunctionName(writer, function.name);
+            try writer.print(" = {s};\n", .{function.name});
+        }
     }
 }
 
@@ -406,24 +494,31 @@ const Methods = struct {
     }
 };
 
-fn writeEnums(allocator: Allocator, writer: anytype, header: *const Header) !void {
+fn writeEnums(
+    allocator: Allocator,
+    writer: anytype,
+    internal: bool,
+    header: *const Header,
+    symbols: *Symbols,
+) !void {
     for (header.enums) |e| {
-        if (e.is_internal) continue;
         if (skip(e.conditionals)) continue;
 
-        try writer.writeAll("pub const ");
-        try writeTypeName(writer, e.name);
-        try writer.writeAll(" = ");
+        if (try symbols.put(e.name)) {
+            try writer.writeAll("pub const ");
+            try writeTypeName(writer, e.name);
+            try writer.writeAll(" = ");
 
-        if (e.is_flags_enum) {
-            try writeFlagsEnum(writer, e);
-        } else {
-            try writeNormalEnum(allocator, writer, e);
+            if (e.is_flags_enum) {
+                try writeFlagsEnum(writer, internal, e);
+            } else {
+                try writeNormalEnum(allocator, writer, internal, e);
+            }
         }
     }
 }
 
-fn writeFlagsEnum(writer: anytype, e: Header.Enum) !void {
+fn writeFlagsEnum(writer: anytype, internal: bool, e: Header.Enum) !void {
     const backing, const backing_bits = switch (e.storage_type.declaration) {
         .int => .{ "c_int", @typeInfo(c_int).int.bits },
         .ImU8 => .{ "u8", 8 },
@@ -432,9 +527,9 @@ fn writeFlagsEnum(writer: anytype, e: Header.Enum) !void {
     var current_offset: usize = 0;
     var padding_i: usize = 0;
     for (e.elements) |element| {
-        // Skip internal elements, and elements discarded by preprocessor
+        // Skip elements without matching visibility, and elements discarded by preprocessor
         if (skip(element.conditionals)) continue;
-        if (element.is_internal) continue;
+        if (element.is_internal != internal) continue;
         if (element.value == 0) continue;
 
         // Calculate the offset of this element
@@ -471,7 +566,7 @@ fn writeFlagsEnum(writer: anytype, e: Header.Enum) !void {
     try writer.writeAll("};\n");
 }
 
-fn writeNormalEnum(allocator: Allocator, writer: anytype, e: Header.Enum) !void {
+fn writeNormalEnum(allocator: Allocator, writer: anytype, internal: bool, e: Header.Enum) !void {
     var values = std.AutoArrayHashMap(i64, void).init(allocator);
     defer values.deinit();
 
@@ -484,8 +579,8 @@ fn writeNormalEnum(allocator: Allocator, writer: anytype, e: Header.Enum) !void 
 
     // Write elements
     for (e.elements) |element| {
-        // Skip internal and count
-        if (element.is_internal) continue;
+        // Skip non visible elements and count elements
+        if (element.is_internal != internal) continue;
         if (element.is_count) continue;
         if (skip(element.conditionals)) continue;
 
@@ -517,6 +612,7 @@ fn writeStructs(
     header: *const Header,
     declarations: *const Declarations,
     methods: *const Methods,
+    symbols: *Symbols,
 ) !void {
     for (header.structs) |ty| {
         // Skip structs skipped by the preprocessor. We don't skip structs marked as internal,
@@ -528,54 +624,77 @@ fn writeStructs(
         const decl_kind = declarations.get(ty.name).?;
         if (decl_kind == .import) continue;
 
-        // Write the struct
-        try writer.writeAll("pub const ");
-        try writeTypeName(writer, ty.name);
-        try writer.writeAll(" = ");
+        if (try symbols.put(ty.name)) {
+            // Write the struct
+            try writer.writeAll("pub const ");
+            try writeTypeName(writer, ty.name);
+            try writer.writeAll(" = ");
 
-        // If we're opaque, don't try to fill out the struct fields
-        if (decl_kind == .@"opaque") {
-            try writer.writeAll("opaque {};\n");
-            continue;
-        }
-
-        // Declare the struct or union
-        switch (ty.kind) {
-            .@"struct" => try writer.writeAll("extern struct {\n"),
-            .@"union" => try writer.writeAll("extern union {\n"),
-        }
-
-        // Fill in the fields
-        for (ty.fields) |field| {
-            // Skip fields skipped by the preprocessor.
-            if (skip(field.conditionals)) continue;
-
-            // Not yet used, but when it is we want to start using it. Safe to disable this assert
-            // if you're just trying to get things working with a different version.
-            if (field.default_value != null) @panic("unimplemented");
-
-            // Write the field.
-            try writer.writeAll("    ");
-            if (field.is_anonymous) {
-                try writer.writeAll("data");
-            } else {
-                try writeFieldName(writer, field.name);
+            // If we're opaque, don't try to fill out the struct fields
+            if (decl_kind == .@"opaque") {
+                try writer.writeAll("opaque {};\n");
+                continue;
             }
-            try writer.writeAll(": ");
-            try writeType(writer, field.type, declarations, .{});
-            try writer.writeAll(",\n");
-        }
 
-        // Alias all relevant methods into the type.
-        const method_names = methods.types.getPtr(ty.name).?;
-        for (method_names.items) |name| {
-            try writer.writeAll("    pub const ");
-            try writeFunctionName(writer, name[ty.name.len + 1 ..]);
-            try writer.print(" = {s};\n", .{name});
-        }
+            // Declare the struct or union
+            switch (ty.kind) {
+                .@"struct" => try writer.writeAll("extern struct {\n"),
+                .@"union" => try writer.writeAll("extern union {\n"),
+            }
 
-        try writer.writeAll("};\n");
+            // Fill in the fields
+            for (ty.fields) |field| {
+                // Skip fields skipped by the preprocessor.
+                if (skip(field.conditionals)) continue;
+
+                // Write the field.
+                try writer.writeAll("    ");
+                if (field.is_anonymous) {
+                    try writer.writeAll("data");
+                } else {
+                    try writeFieldName(writer, field.name);
+                }
+                try writer.writeAll(": ");
+                try writeType(writer, field.type, declarations, .{});
+                if (field.default_value) |v| {
+                    try writer.writeAll(" = ");
+                    try writeValue(writer, v);
+                }
+                try writer.writeAll(",\n");
+            }
+
+            // Alias all relevant methods into the type.
+            const method_names = methods.types.getPtr(ty.name).?;
+            for (method_names.items) |name| {
+                try writer.writeAll("    pub const ");
+                try writeFunctionName(writer, name[ty.name.len + 1 ..]);
+                try writer.print(" = {s};\n", .{name});
+            }
+
+            try writer.writeAll("};\n");
+        }
     }
+}
+
+pub fn writeValue(writer: anytype, value: []const u8) !void {
+    // Strip the `f` postfix off of floats
+    float: {
+        if (value.len > 0 and
+            value[value.len - 1] == 'f' and
+            value[0] >= '0' and
+            value[0] <= '9')
+        {
+            switch (value[0]) {
+                '0'...'9' => {},
+                else => break :float,
+            }
+            try writer.writeAll(value[0 .. value.len - 1]);
+            return;
+        }
+    }
+
+    // Write everything else as is
+    try writer.writeAll(value);
 }
 
 fn writeHelpers(writer: anytype) !void {
@@ -836,6 +955,12 @@ fn skip(conditionals: []const Header.Conditional) bool {
             if (std.mem.eql(u8, conditional.expression, "defined(VK_USE_PLATFORM_WIN32_KHR)&&!defined(NOMINMAX)")) break :b true;
             if (std.mem.eql(u8, conditional.expression, "IMGUI_IMPL_VULKAN_HAS_DYNAMIC_RENDERING")) break :b true;
             if (std.mem.eql(u8, conditional.expression, "defined(VK_VERSION_1_3)|| defined(VK_KHR_dynamic_rendering)")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_HAS_DOCK")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_ENABLE_SSE")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_DISABLE_DEFAULT_FILE_FUNCTIONS")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_ENABLE_STB_TRUETYPE")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_ENABLE_FREETYPE")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_ENABLE_TEST_ENGINE")) break :b true;
 
             // False conditionals
             if (std.mem.eql(u8, conditional.expression, "IMGUI_OVERRIDE_DRAWVERT_STRUCT_LAYOUT")) break :b false;
@@ -854,6 +979,9 @@ fn skip(conditionals: []const Header.Conditional) bool {
             if (std.mem.eql(u8, conditional.expression, "IMGUI_HAS_IMSTR")) break :b false;
             if (std.mem.eql(u8, conditional.expression, "IMGUI_DISABLE_DEBUG_TOOLS")) break :b false;
             if (std.mem.eql(u8, conditional.expression, "ImTextureID_Invalid")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_DISABLE_DEFAULT_MATH_FUNCTIONS")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_DISABLE_FILE_FUNCTIONS")) break :b false;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_STB_NAMESPACE")) break :b false;
 
             std.debug.panic("unexpected preprocessor conditional: {s}", .{conditional.expression});
         };
@@ -974,7 +1102,13 @@ fn writeFunctionName(writer: anytype, raw: []const u8) !void {
 
     // Imgui prefixes
     {
-        const prefixes: []const []const u8 = &.{ "cImGui_ImplVulkan", "cImGui_ImplSDL3", "ImGui", "Im" };
+        const prefixes: []const []const u8 = &.{
+            "cImGui_ImplVulkan",
+            "cImGui_ImplSDL3",
+            "ImGui",
+            "Im",
+            "cIm",
+        };
         for (prefixes) |prefix| {
             if (std.mem.startsWith(u8, name, prefix)) {
                 name = name[prefix.len..];

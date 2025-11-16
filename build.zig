@@ -49,7 +49,10 @@ pub fn build(b: *std.Build) void {
     });
     dear_imgui_lib.addCSourceFiles(.{
         .root = b.path("src/cached"),
-        .files = &.{"dcimgui.cpp"},
+        .files = &.{
+            "dcimgui.cpp",
+            "dcimgui_internal.cpp",
+        },
         .flags = flags,
     });
     b.installArtifact(dear_imgui_lib);
@@ -119,6 +122,7 @@ pub fn build(b: *std.Build) void {
     const dear_imgui_zig = generate_dear_imgui.addOutputFileArg("dear_imgui.zig");
     generate_dear_imgui.addFileArg(b.path("src/templates/cimgui_prefix.zig.template"));
     generate_dear_imgui.addFileArg(b.path("src/templates/cimgui_postfix.zig.template"));
+    generate_dear_imgui.addFileArg(b.path("src/cached/dcimgui_internal.json"));
     const dear_imgui_zig_module = b.addModule("dear_imgui", .{
         .root_source_file = dear_imgui_zig,
         .target = target,
