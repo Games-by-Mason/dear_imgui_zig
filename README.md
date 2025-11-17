@@ -41,18 +41,24 @@ Update `build.zig.zon`, and then if the headers changed, regenerate them into `s
 
 Here's how to build `cimgui.h`:
 ```sh
-python3 $DEAR_BINDINGS_PATH/dear_bindings.py -o src/cached/cimgui $DEAR_IMGUI_PATH/imgui.h
+python3 $DEAR_BINDINGS_PATH/dear_bindings.py --imconfig-path src/include/zimconfig.h -o src/cached/dcimgui $DEAR_IMGUI_PATH/imgui.h
 ```
 
 Here's how to build `cimgui_internal.h`:
 ```sh
-python3 $DEAR_BINDINGS_PATH/dear_bindings.py -o src/cached/cimgui_internal --include $DEAR_IMGUI_PATH/imgui.h $DEAR_IMGUI_PATH/imgui_internal.h
+python3 $DEAR_BINDINGS_PATH/dear_bindings.py --imconfig-path src/include/zimconfig.h -o src/cached/dcimgui_internal --include $DEAR_IMGUI_PATH/imgui.h $DEAR_IMGUI_PATH/imgui_internal.h
 ```
 
 Here's how to build a backend, using Vulkan as an example:
 
 ```sh
-python3 $DEAR_BINDINGS_PATH/dear_bindings.py --backend --imconfig-path $DEAR_IMGUI_PATH/imconfig.h -o src/cached/cimgui_impl_vulkan $DEAR_IMGUI_PATH/backends/imgui_impl_vulkan.h
+python3 $DEAR_BINDINGS_PATH/dear_bindings.py --backend --imconfig-path src/include/zimconfig.h -o src/cached/cimgui_impl_vulkan $DEAR_IMGUI_PATH/backends/imgui_impl_vulkan.h
+```
+
+And here's SDL3:
+
+```sh
+python3 $DEAR_BINDINGS_PATH/dear_bindings.py --backend --imconfig-path src/include/zimconfig.h -o src/cached/dcimgui_impl_sdl3 $DEAR_IMGUI_PATH/backends/imgui_impl_sdl3.h
 ```
 
 If `generator.zig` fails, you may need to add missing values to the enumeration. `std.json` does not provide helpful errors at the time of writing, the easiest way to debug this is to comment out the actual generation code, and all fields in `Header`, adding them back until you figure out which are causing the issue.

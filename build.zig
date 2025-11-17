@@ -1,9 +1,10 @@
 const std = @import("std");
 
-const flags: []const []const u8 = &.{
+pub const flags: []const []const u8 = &.{
     "-fno-exceptions",
     "-fno-rtti",
     "-fno-threadsafe-statics",
+    "-DIMGUI_USER_CONFIG=\"imconfig_zig.h\"",
 };
 
 pub fn build(b: *std.Build) void {
@@ -34,6 +35,8 @@ pub fn build(b: *std.Build) void {
         }),
     });
     dear_imgui_lib.addIncludePath(upstream.path(""));
+    dear_imgui_lib.addIncludePath(b.path("src/include"));
+    dear_imgui_lib.installHeadersDirectory(b.path("src/include"), "", .{});
     dear_imgui_lib.installHeadersDirectory(upstream.path("."), "", .{});
     dear_imgui_lib.linkLibC();
     dear_imgui_lib.addCSourceFiles(.{
@@ -68,6 +71,7 @@ pub fn build(b: *std.Build) void {
     dear_imgui_vulkan_lib.linkLibrary(dear_imgui_lib);
     dear_imgui_vulkan_lib.addCSourceFile(.{ .file = upstream.path("backends/imgui_impl_vulkan.cpp"), .flags = flags });
     dear_imgui_vulkan_lib.addCSourceFile(.{ .file = b.path("src/cached/dcimgui_impl_vulkan.cpp"), .flags = flags });
+    dear_imgui_vulkan_lib.addIncludePath(b.path("src/include"));
     dear_imgui_vulkan_lib.addIncludePath(upstream.path(""));
     dear_imgui_vulkan_lib.addIncludePath(upstream.path("backends"));
     const vulkan_headers = b.dependency("Vulkan-Headers", .{});
@@ -88,13 +92,12 @@ pub fn build(b: *std.Build) void {
     dear_imgui_sdl3_lib.linkLibrary(dear_imgui_lib);
     dear_imgui_sdl3_lib.addCSourceFile(.{ .file = upstream.path("backends/imgui_impl_sdl3.cpp"), .flags = flags });
     dear_imgui_sdl3_lib.addCSourceFile(.{ .file = b.path("src/cached/dcimgui_impl_sdl3.cpp"), .flags = flags });
+    dear_imgui_sdl3_lib.addIncludePath(b.path("src/include"));
     dear_imgui_sdl3_lib.addIncludePath(upstream.path(""));
     dear_imgui_sdl3_lib.addIncludePath(upstream.path("backends"));
     const sdl = b.dependency("sdl", .{});
     dear_imgui_sdl3_lib.addIncludePath(sdl.path("include"));
-    // dear_imgui_sdl3_lib.root_module.addCMacro("IMGUI_IMPL_VULKAN_NO_PROTOTYPES", "1"); // Assumed in generator // XXX: ...
     dear_imgui_sdl3_lib.installHeadersDirectory(upstream.path("backends"), "", .{});
-    // dear_imgui_sdl3_lib.installHeadersDirectory(vulkan_headers.path("include"), "", .{}); // XXX: ...
     b.installArtifact(dear_imgui_sdl3_lib);
 
     // Compile the generator

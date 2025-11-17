@@ -961,10 +961,10 @@ fn skip(conditionals: []const Header.Conditional) bool {
             if (std.mem.eql(u8, conditional.expression, "IMGUI_ENABLE_STB_TRUETYPE")) break :b true;
             if (std.mem.eql(u8, conditional.expression, "IMGUI_ENABLE_FREETYPE")) break :b true;
             if (std.mem.eql(u8, conditional.expression, "IMGUI_ENABLE_TEST_ENGINE")) break :b true;
+            if (std.mem.eql(u8, conditional.expression, "IMGUI_USE_WCHAR32")) break :b true;
 
             // False conditionals
             if (std.mem.eql(u8, conditional.expression, "IMGUI_OVERRIDE_DRAWVERT_STRUCT_LAYOUT")) break :b false;
-            if (std.mem.eql(u8, conditional.expression, "IMGUI_USE_WCHAR32")) break :b false;
             if (std.mem.eql(u8, conditional.expression, "ImTextureID")) break :b false;
             if (std.mem.eql(u8, conditional.expression, "ImDrawIdx")) break :b false;
             if (std.mem.eql(u8, conditional.expression, "ImDrawCallback")) break :b false;

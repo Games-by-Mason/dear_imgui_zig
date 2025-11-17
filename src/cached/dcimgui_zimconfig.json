@@ -1,0 +1,16 @@
+{
+    "defines": [
+        {
+            "name": "DIMGUI_USE_WCHAR32",
+            "is_internal": false,
+            "source_location": {
+                "filename": "zimconfig.h",
+                "line": 2
+            }
+        }
+    ],
+    "enums": [],
+    "typedefs": [],
+    "structs": [],
+    "functions": []
+}
