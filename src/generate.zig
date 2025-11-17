@@ -388,7 +388,7 @@ fn writeTypedefs(
 
         // Write the typedef prefix
         if (try symbols.put(typedef.name)) {
-            try writer.writeAll("const ");
+            try writer.writeAll("pub const ");
             try writeTypeName(writer, typedef.name);
             try writer.writeAll(" = ");
             try writeType(writer, typedef.type, declarations, .{});
