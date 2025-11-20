@@ -566,7 +566,12 @@ fn writeFlagsEnum(writer: anytype, internal: bool, e: Header.Enum) !void {
     try writer.writeAll("};\n");
 }
 
-fn writeNormalEnum(allocator: Allocator, writer: anytype, internal: bool, e: Header.Enum) !void {
+fn writeNormalEnum(
+    allocator: Allocator,
+    writer: anytype,
+    internal: bool,
+    e: Header.Enum,
+) !void {
     var values = std.AutoArrayHashMap(i64, void).init(allocator);
     defer values.deinit();
 
@@ -576,6 +581,11 @@ fn writeNormalEnum(allocator: Allocator, writer: anytype, internal: bool, e: Hea
         .ImU8 => try writer.writeAll("u8"),
     }
     try writer.writeAll(") {\n");
+
+    // Get the element count if present
+    const maybe_count = b: for (e.elements) |element| {
+        if (element.is_count) break :b element.value;
+    } else null;
 
     // Write elements
     for (e.elements) |element| {
@@ -595,7 +605,16 @@ fn writeNormalEnum(allocator: Allocator, writer: anytype, internal: bool, e: Hea
         try writer.print(" = {},\n", .{element.value});
     }
 
-    // Write constants since they're used internally, but keep them private
+    // Add any missing elements between 0 and count.
+    if (maybe_count) |count| {
+        for (0..@intCast(count)) |value| {
+            if (!values.contains(@intCast(value))) {
+                try writer.print("    anon{} = {},\n", .{ value, value });
+            }
+        }
+    }
+
+    // Write count constants since they're used internally, but keep them private
     for (e.elements) |element| {
         if (element.is_count) {
             try writer.writeAll("    const ");
