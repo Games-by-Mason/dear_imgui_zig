@@ -1,5 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const Io = std.Io;
+const Dir = Io.Dir;
 
 const DeclarationKind = enum {
     normal,
@@ -180,6 +182,9 @@ pub fn main() !void {
     defer std.debug.assert(gpa.deinit() == .ok);
     const allocator = gpa.allocator();
 
+    var threaded_io: Io.Threaded = .init_single_threaded;
+    const io = threaded_io.io();
+
     var args = try std.process.argsWithAllocator(allocator);
     defer args.deinit();
     std.debug.assert(args.skip());
@@ -198,9 +203,12 @@ pub fn main() !void {
 
     // Write the prefix
     if (prefix_path) |p| {
-        const prefix_source = try std.fs.cwd().readFileAlloc(allocator, p, max_size);
-        defer allocator.free(prefix_source);
-        try writer.writeAll(prefix_source);
+        const file = try Dir.cwd().openFile(io, p, .{});
+        defer file.close(io);
+        var buf: [4096]u8 = undefined;
+        var file_reader = file.readerStreaming(io, &buf);
+        var reader = &file_reader.interface;
+        _ = try reader.streamRemaining(writer);
         try writer.writeAll("\n// End of prefix\n\n");
     }
 
@@ -209,7 +217,7 @@ pub fn main() !void {
     defer symbols.deinit();
 
     // Write the source
-    const main_source = try std.fs.cwd().readFileAlloc(allocator, in_path, max_size);
+    const main_source = try std.fs.cwd().readFileAlloc(in_path, allocator, .limited(max_size));
     defer allocator.free(main_source);
     try writeSource(
         allocator,
@@ -222,7 +230,7 @@ pub fn main() !void {
 
     // Write the internal source, if supplied
     if (internal_path) |p| {
-        const internal_source = try std.fs.cwd().readFileAlloc(allocator, p, max_size);
+        const internal_source = try std.fs.cwd().readFileAlloc(p, allocator, .limited(max_size));
         defer allocator.free(internal_source);
 
         try writer.writeAll("pub const internal = struct {\n");
@@ -238,10 +246,13 @@ pub fn main() !void {
 
     // Write the postfix
     if (postfix_path) |p| {
-        const postfix_source = try std.fs.cwd().readFileAlloc(allocator, p, max_size);
-        defer allocator.free(postfix_source);
+        const file = try Dir.cwd().openFile(io, p, .{});
+        defer file.close(io);
+        var buf: [4096]u8 = undefined;
+        var file_reader = file.readerStreaming(io, &buf);
+        var reader = &file_reader.interface;
+        _ = try reader.streamRemaining(writer);
         try writer.writeAll("\n// Start of postfix\n\n");
-        try writer.writeAll(postfix_source);
     }
 
     // Flush and exit
@@ -251,7 +262,7 @@ pub fn main() !void {
 fn writeSource(
     allocator: Allocator,
     source: []const u8,
-    writer: *std.Io.Writer,
+    writer: *Io.Writer,
     symbols: *Symbols,
     internal: bool,
 ) !void {
@@ -740,7 +751,7 @@ fn writeType(
     ty: Header.Type,
     declarations: *const Declarations,
     hints: WriteTypeHints,
-) std.Io.Writer.Error!void {
+) Io.Writer.Error!void {
     // Handle function pointers which are stored separately.
     if (ty.type_details) |details| switch (details.flavour) {
         .function_pointer => return writeFunctionPointer(writer, details, declarations),

@@ -2,7 +2,7 @@
     .name = .dear_imgui,
     .fingerprint = 0xc1cc609af54040bd,
     .version = "1.0.0",
-    .minimum_zig_version = "0.15.1",
+    .minimum_zig_version = "0.16.0-dev.1484+d0ba6642b",
     .dependencies = .{
         .@"dear-imgui" = .{
             .url = "https://github.com/ocornut/imgui/archive/refs/tags/v1.92.2b-docking.tar.gz",
